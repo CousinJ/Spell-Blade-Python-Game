@@ -45,6 +45,25 @@ pip install -r requirements-server.txt   # server: fastapi, uvicorn, websockets
 
 ---
 
+## Play the deployed demo (easiest)
+
+A coordinator is already running in the cloud, so you only need the **client**:
+
+```bash
+pip install -r requirements.txt   # client deps: pygame-ce, websocket-client
+python client.py
+```
+
+That's it — the client connects to the deployed coordinator by default
+(`wss://spell-blade-python-game-production.up.railway.app/ws`). Press **SPACE**
+on the title to enter the lobby; the first two players are paired into a match
+and anyone else waits until a slot opens. Requires **Python 3.11+**.
+
+Check the live server any time:
+`https://spell-blade-python-game-production.up.railway.app/health`
+
+---
+
 ## Run it locally (no deployment)
 
 Everything runs on `localhost`. You need **three terminals**: one coordinator
@@ -66,9 +85,10 @@ audit DB is written — defaults to `audit.db` in the working directory.)
 python client.py
 ```
 
-The client connects to `ws://localhost:8000/ws` by default. To point at a
-different coordinator, set `SPELLBLADE_WS_URL` first, e.g.
-`SPELLBLADE_WS_URL=ws://localhost:9000/ws python client.py`.
+The client defaults to the **deployed** coordinator, so for local play point it
+at your own server first:
+`SPELLBLADE_WS_URL=ws://localhost:8000/ws python client.py` (use the matching
+port if you changed it).
 
 ### Controls
 

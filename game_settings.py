@@ -13,8 +13,14 @@ PLAYER_Y = HEIGHT - 200  # 800
 PLAYER_COLORS = {"p1": (255, 0, 0), "p2": (0, 0, 255)}
 
 # Networking: clients connect *out* to the coordinator's WebSocket URL.
-# Override with SPELLBLADE_WS_URL to point at the deployed coordinator.
-WS_URL = os.environ.get("SPELLBLADE_WS_URL", "ws://localhost:8000/ws")
+# Defaults to the deployed Railway coordinator so a fresh clone just works:
+#     python client.py
+# For local development against your own server, override it, e.g.:
+#     SPELLBLADE_WS_URL=ws://localhost:8000/ws python client.py
+WS_URL = os.environ.get(
+    "SPELLBLADE_WS_URL",
+    "wss://spell-blade-python-game-production.up.railway.app/ws",
+)
 
 # How often the client publishes its local input/state (Hz).
 INPUT_PUBLISH_HZ = 30
