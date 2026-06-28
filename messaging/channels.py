@@ -44,3 +44,17 @@ def lifecycle(match_id: str) -> str:
 def client_inbox(client_id: str) -> str:
     """Private reply channel for a not-yet-matched client (join handshake)."""
     return f"{PREFIX}/{VERSION}/client/{client_id}/inbox"
+
+
+def client_id_from_inbox(channel: str) -> str | None:
+    """Recover the ``clientId`` from a client inbox channel key, or None.
+
+    Lets the WebSocket endpoint tie a connection to its client id (the
+    connection subscribes to its own inbox on open) so a disconnect can be
+    reported to the coordinator.
+    """
+    prefix = f"{PREFIX}/{VERSION}/client/"
+    suffix = "/inbox"
+    if channel.startswith(prefix) and channel.endswith(suffix):
+        return channel[len(prefix):-len(suffix)] or None
+    return None

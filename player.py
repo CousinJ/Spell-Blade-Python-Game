@@ -1,6 +1,17 @@
 import pygame
 import hero
 import game_settings
+import actions
+
+
+# Arrow-key -> attack binding for the standardized moveset. A/D stay movement,
+# Space stays block (handled separately).
+ATTACK_KEYS = {
+    pygame.K_UP: actions.jump_attack,
+    pygame.K_LEFT: actions.strike_1,
+    pygame.K_RIGHT: actions.strike_2,
+    pygame.K_DOWN: actions.sweep,
+}
 
 
 class Player():
@@ -31,6 +42,12 @@ class Player():
         self.alive = True
         self.is_hurt = False
         self.rounds_won = 0
+
+        # --- stamina + parry (server-authoritative; mirrored locally) ---
+        self.max_stamina = game_settings.MAX_STAMINA
+        self.stamina = self.max_stamina
+        self.is_parrying = False
+        self._blocks_taken = 0  # mirror of the snapshot counter for parry edges
 
 
     def draw(self, win):
@@ -69,21 +86,21 @@ class Player():
         self.update()
 
     def attack(self):
-        """Read attack keys. Returns the started action's id, or None.
+        """Read the arrow attack keys. Returns the started action's id, or None.
 
-        The returned action_id is published to the coordinator so the server can
-        resolve the hit authoritatively and the opponent can render the swing.
+        The standardized moveset is the same for every hero: Up=jump_attack,
+        Left=strike_1, Right=strike_2, Down=sweep. The attack is gated locally on
+        stamina (mirrored from the server) so it simply won't fire without enough
+        -- the server re-checks and deducts authoritatively.
         """
         keys = pygame.key.get_pressed()
         if not self.is_acting:
             started = None
-            if keys[pygame.K_u]:
-                started = self.hero.hero.attack_one
-            elif keys[pygame.K_i]:
-                started = self.hero.hero.attack_two
-            elif keys[pygame.K_o]:
-                started = self.hero.hero.attack_three
-            if started:
+            for key, action in ATTACK_KEYS.items():
+                if keys[key]:
+                    started = action
+                    break
+            if started and self.stamina >= started.stamina_cost:
                 self.action = started
                 self.is_acting = True
                 self.frame_index = 0

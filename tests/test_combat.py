@@ -11,18 +11,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from coordinator import action_data  # noqa: E402
 from coordinator.combat import SwingTracker, resolve_hit  # noqa: E402
 
-# fire_strike: damage 30, reach 170, block_mitigation 0.50
-ATK = "fire_strike"
+# strike_2: damage 20, reach 175, block_mitigation 0.60
+ATK = "strike_2"
 
 
 def test_hit_in_range_and_facing():
     r = resolve_hit(200.0, +1, 300.0, False, ATK)  # target to the right, facing right
     assert r.hit and r.reason == "hit"
-    assert r.damage == 30 and not r.blocked
+    assert r.damage == 20 and not r.blocked
 
 
 def test_miss_out_of_range():
-    r = resolve_hit(200.0, +1, 500.0, False, ATK)  # 300 px > reach 170
+    r = resolve_hit(200.0, +1, 500.0, False, ATK)  # 300 px > reach 175
     assert not r.hit and r.reason == "out_of_range" and r.damage == 0
 
 
@@ -34,7 +34,7 @@ def test_miss_wrong_facing():
 def test_block_reduces_damage():
     r = resolve_hit(200.0, +1, 300.0, True, ATK)  # blocking
     assert r.hit and r.blocked
-    assert r.damage == 15  # 30 * (1 - 0.50)
+    assert r.damage == 8  # 20 * (1 - 0.60)
 
 
 def test_dead_target_no_hit():
@@ -50,12 +50,12 @@ def test_block_action_is_not_an_attack():
 def test_facing_left_hits():
     # attacker at 500 facing left hits target at 400 within reach
     r = resolve_hit(500.0, -1, 400.0, False, ATK)
-    assert r.hit and r.damage == 30
+    assert r.hit and r.damage == 20
 
 
 def test_reach_boundary_inclusive():
     # exactly at reach distance counts as a hit
-    r = resolve_hit(200.0, +1, 200.0 + 170.0, False, ATK)
+    r = resolve_hit(200.0, +1, 200.0 + 175.0, False, ATK)
     assert r.hit
 
 
@@ -69,8 +69,16 @@ def test_swing_tracker_dedupes_one_hit_per_swing():
 
 def test_damage_values_match_source_table():
     # guards against accidental edits drifting from the documented data
-    assert action_data.ACTIONS["fire_strike"].damage == 30
-    assert action_data.ACTIONS["ice_lance"].damage == 22
+    assert action_data.ACTIONS["strike_2"].damage == 20
+    assert action_data.ACTIONS["jump_attack"].damage == 26
+
+
+def test_standardized_moveset_and_stamina_costs():
+    # the four arrow attacks + block, each with a positive cost (block is free)
+    assert set(action_data.ACTIONS) == {"block", "jump_attack", "strike_1", "strike_2", "sweep"}
+    assert action_data.ACTIONS["block"].stamina_cost == 0
+    for aid in ("jump_attack", "strike_1", "strike_2", "sweep"):
+        assert action_data.ACTIONS[aid].stamina_cost > 0
 
 
 if __name__ == "__main__":

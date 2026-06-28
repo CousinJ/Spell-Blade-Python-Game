@@ -63,7 +63,7 @@ class Driver(threading.Thread):
                         self.x, self.direction, False, False, "idle"
                     )
                     if self.attacker and time.time() - last_attack > 0.1:
-                        self.gc.send_attack("fire_strike")
+                        self.gc.send_attack("strike_2")
                         last_attack = time.time()
 
                 if self.phase == "MATCH_OVER":

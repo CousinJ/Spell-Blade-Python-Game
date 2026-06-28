@@ -87,7 +87,7 @@ class Player(threading.Thread):
                         self._pub(
                             channels.player_input(self.match_id, self.actor),
                             env("attack", self.match_id, self.actor, self._seq,
-                                {"action_id": "fire_strike"}),
+                                {"action_id": "strike_2"}),
                         )
                         last_attack = time.time()
                 if self.phase == "MATCH_OVER":

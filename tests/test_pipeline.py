@@ -65,7 +65,7 @@ def test_enricher_attack_resolves_and_adds_metadata():
         attacker="p1", target_actor="p2", attacker_x=300, attacker_dir=1,
         target_x=400, target_blocking=False, target_alive=True, attacker_hero="FireChar",
     )
-    env = Envelope(type=MessageType.ATTACK, actor="p1", payload={"action_id": "fire_strike"})
+    env = Envelope(type=MessageType.ATTACK, actor="p1", payload={"action_id": "strike_2"})
     out = e.enrich_attack(env, view)
     assert out["attacker"] == "p1" and out["target"] == "p2"
     assert out["attacker_hero"] == "FireChar"

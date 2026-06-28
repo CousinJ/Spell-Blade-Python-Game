@@ -53,6 +53,12 @@ class MatchContext:
     assets_loaded: set[str] = field(default_factory=set)
     rematch: set[str] = field(default_factory=set)
     tick_task: Optional[asyncio.Task] = None
+    # Stamina is fast/continuous (like position) and is NOT written to the audit
+    # log -- it lives here on the live match context and is mirrored to clients
+    # via the snapshot. ``blocks_taken`` is a per-actor counter the client uses
+    # to detect a freshly-blocked hit and play the parry animation.
+    stamina: dict[str, float] = field(default_factory=dict)
+    blocks_taken: dict[str, int] = field(default_factory=dict)
 
     def opponent(self, actor: str) -> str:
         return "p2" if actor == "p1" else "p1"
@@ -159,6 +165,8 @@ class MatchCoordinator:
         actor = ACTORS[len(mc.clients)]
         mc.clients[actor] = client_id
         mc.state.join(actor, x=_START_X[actor])
+        mc.stamina[actor] = float(action_data.MAX_STAMINA)
+        mc.blocks_taken[actor] = 0
 
         await self._publish(
             channels.client_inbox(client_id),
@@ -172,6 +180,52 @@ class MatchCoordinator:
         if len(mc.clients) == 2:
             self._pending = None
             await self._fire(mc, Event.PLAYER_JOINED)
+
+    # ----------------------------------------------------------- disconnects
+    async def on_disconnect(self, client_id: str) -> None:
+        """Handle a dropped WebSocket connection (called by the WS endpoint).
+
+        * Already-finished match -> nothing to do (the normal post-match
+          reconnect path lands here).
+        * Still waiting alone in the lobby -> discard the pending match so the
+          slot frees and no "ghost" remains for the next joiner to pair with.
+        * Mid-match -> the opponent wins by forfeit (PLAYER_LEFT -> MATCH_OVER).
+        """
+        found = None
+        for mc in self._matches.values():
+            for actor, cid in mc.clients.items():
+                if cid == client_id:
+                    found = (mc, actor)
+                    break
+            if found:
+                break
+        if found is None:
+            return
+
+        mc, actor = found
+        if mc.machine.state == State.MATCH_OVER:
+            return  # match already finished; normal post-game disconnect
+        if mc.machine.state == State.LOBBY:
+            await self._discard_pending(mc, actor)
+            return
+
+        # Active match: award the remaining player the win, then end the match.
+        opponent = mc.opponent(actor)
+        if opponent in mc.state.players:
+            mc.state.leave(actor)  # audited departure
+            mc.state.round_result(round_winner=opponent, match_winner=opponent)
+        await self._fire(mc, Event.PLAYER_LEFT)
+
+    async def _discard_pending(self, mc: MatchContext, actor: str) -> None:
+        """Tear down a pending (not-yet-started) match a lone player left."""
+        mc.state.leave(actor)  # audit join -> leave for the abandoned match
+        mc.clients.pop(actor, None)
+        if not mc.clients:
+            for ch in list(mc.inbox_channels):
+                await self._hub.unsubscribe(ch, self._inbox)
+            self._matches.pop(mc.match_id, None)
+            if self._pending == mc.match_id:
+                self._pending = None
 
     # --------------------------------------------------------------- handlers
     async def _on_hero_select(self, env: Envelope, channel: str) -> None:
@@ -206,17 +260,32 @@ class MatchCoordinator:
         attacker = env.actor
         if attacker not in mc.state.players:
             return
+        action_id = env.payload.get("action_id")
+        if not rules.is_attack(action_id):
+            return
+        cost = rules.get_action(action_id).stamina_cost
+        # Gate on stamina: an attack the attacker can't afford simply never fires.
+        if mc.stamina.get(attacker, 0.0) < cost:
+            return
         swing_id = env.client_seq if env.client_seq is not None else id(env)
         if not mc.swings.register(attacker, swing_id):
             return  # one hit per swing
 
+        mc.stamina[attacker] = mc.stamina.get(attacker, 0.0) - cost
         target = mc.opponent(attacker)
         enriched = mc.enricher.enrich_attack(env, self._combat_view(mc, attacker, target))
         hit = enriched["hit"]
-        if hit["hit"] and hit["damage"] > 0:
-            mc.state.apply_damage(target, hit["damage"], attacker=attacker, blocked=hit["blocked"])
-            if not mc.state.players[target].alive:
-                await self._end_round(mc, winner=attacker)
+        if hit["hit"]:
+            if hit["blocked"]:
+                # The defender pays stamina to absorb the hit and plays a parry.
+                mc.stamina[target] = max(
+                    0.0, mc.stamina.get(target, 0.0) - action_data.BLOCK_STAMINA_DRAIN
+                )
+                mc.blocks_taken[target] = mc.blocks_taken.get(target, 0) + 1
+            if hit["damage"] > 0:
+                mc.state.apply_damage(target, hit["damage"], attacker=attacker, blocked=hit["blocked"])
+                if not mc.state.players[target].alive:
+                    await self._end_round(mc, winner=attacker)
 
     async def _on_rematch(self, env: Envelope, channel: str) -> None:
         mc = self._matches.get(env.match_id)
@@ -288,6 +357,8 @@ class MatchCoordinator:
         for actor, ps in mc.state.players.items():
             if ps.hp != ps.max_hp or not ps.alive:
                 mc.state.set_hp(actor, ps.max_hp)
+            mc.stamina[actor] = float(action_data.MAX_STAMINA)
+            mc.blocks_taken[actor] = 0
             mc.aggregator.update(
                 actor,
                 {"x": _START_X.get(actor, 0.0), "direction": _START_DIR.get(actor, 1), "is_blocking": False},
@@ -304,13 +375,28 @@ class MatchCoordinator:
     async def _snapshot_loop(self, mc: MatchContext) -> None:
         try:
             while True:
+                self._regen_stamina(mc)
                 await self._publish_snapshot(mc)
                 await asyncio.sleep(self._tick_interval)
         except asyncio.CancelledError:
             pass
 
+    def _regen_stamina(self, mc: MatchContext) -> None:
+        """Refill stamina each tick, paused for any actor currently blocking."""
+        gain = action_data.STAMINA_REGEN_PER_SEC * self._tick_interval
+        for actor, ps in mc.state.players.items():
+            if not ps.alive:
+                continue
+            if mc.aggregator.latest(actor).get("is_blocking"):
+                continue  # holding block stops regen
+            mc.stamina[actor] = min(
+                float(action_data.MAX_STAMINA), mc.stamina.get(actor, 0.0) + gain
+            )
+
     async def _publish_snapshot(self, mc: MatchContext) -> None:
-        payload = mc.enricher.enrich_snapshot(mc.aggregator.build(mc.state))
+        payload = mc.enricher.enrich_snapshot(
+            mc.aggregator.build(mc.state, stamina=mc.stamina, blocks_taken=mc.blocks_taken)
+        )
         await self._publish(
             channels.snapshot(mc.match_id),
             Envelope(type=MessageType.WORLD_SNAPSHOT, match_id=mc.match_id, payload=payload),

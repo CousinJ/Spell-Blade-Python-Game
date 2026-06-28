@@ -29,7 +29,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from audit.event_store import EventStore
 from coordinator.match_coordinator import MatchCoordinator
-from messaging import bus
+from messaging import bus, channels
 from messaging.pubsub import PubSubHub
 from messaging.schema import Envelope, SchemaError
 
@@ -59,6 +59,7 @@ class WsSubscriber:
     def __init__(self, ws: WebSocket, sub_id: str) -> None:
         self._ws = ws
         self.id = sub_id
+        self.client_id: str | None = None  # set when it subscribes to its inbox
 
     async def send(self, text: str) -> None:
         await self._ws.send_text(text)
@@ -104,6 +105,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
         pass
     finally:
         await hub.unsubscribe_all(sub)
+        if sub.client_id:
+            await coordinator.on_disconnect(sub.client_id)
 
 
 async def _handle_frame(sub: WsSubscriber, raw: str) -> None:
@@ -119,6 +122,9 @@ async def _handle_frame(sub: WsSubscriber, raw: str) -> None:
 
     if op == "subscribe":
         await hub.subscribe(channel, sub)
+        cid = channels.client_id_from_inbox(channel)
+        if cid:
+            sub.client_id = cid
         await _send(sub, {"op": "subscribed", "channel": channel})
     elif op == "unsubscribe":
         await hub.unsubscribe(channel, sub)

@@ -17,6 +17,9 @@ dist/
 
 # Databases / audit-trail artifacts (Sprint 2 event store)
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 *.sqlite
 *.sqlite3
 

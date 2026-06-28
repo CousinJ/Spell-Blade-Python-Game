@@ -73,6 +73,18 @@ class HurtState():
         return animator.animate_loop_anim(self.anim, image, p)
 
 
+class ParryState():
+    def __init__(self, manager):
+        self.anim = anim_dict.parry_anim
+        self.manager = manager
+    def update(self, p):
+        # The parry clip plays once; clear the flag when it has run its frames.
+        if p.frame_index >= self.anim["frames"]:
+            p.is_parrying = False
+    def update_anim(self, p, image, animator):
+        return animator.animate_loop_anim(self.anim, image, p)
+
+
 class DeadState():
     def __init__(self, manager):
         self.anim = anim_dict.death_anim
@@ -110,13 +122,19 @@ class Manager():
         self.acting = ActingState(self)
         self.blocking = BlockingState(self)
         self.hurt = HurtState(self)
+        self.parry = ParryState(self)
         self.dead = DeadState(self)
         self.acting_timer = 0
 
     def update(self, p):
-        # Priority: death > hurt > acting > blocking > movement.
+        # Priority: death > parry > hurt > acting > blocking > movement.
         if not p.alive:
             p.state = self.switch_state(p, self.dead)
+            p.state.update(p)
+            return
+
+        if getattr(p, "is_parrying", False):
+            p.state = self.switch_state(p, self.parry)
             p.state.update(p)
             return
 

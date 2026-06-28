@@ -76,9 +76,19 @@ different coordinator, set `SPELLBLADE_WS_URL` first, e.g.
 |-----------|-----------------------------------------|
 | `W A S D` | pick a hero (Fire / Magic / Forest / Ice) on the select screen |
 | `A` / `D` | move left / right                       |
-| `U I O`   | the hero's three attacks                |
+| `↑` Up    | jump attack (heaviest, most stamina)    |
+| `←` Left  | strike 1                                |
+| `→` Right | strike 2                                |
+| `↓` Down  | sweep                                   |
 | `Space`   | block                                   |
 | `Esc`     | quit                                    |
+
+All heroes share the **same four-attack moveset** (bound to the arrow keys) with
+identical stats; every hero animation is drawn from `assets/effect_sheets/`. Each
+attack costs **stamina** (shown as the amber bar under each health bar): you can't
+attack without enough, stamina regenerates over time but **not while blocking**,
+and **blocking a hit drains the defender's stamina** and plays a parry. The
+standardized action/stamina table lives in `coordinator/action_data.py`.
 
 ---
 
@@ -103,7 +113,9 @@ events** published by the coordinator. The startup sequence:
 4. **Fight.** When both report loaded, the server transitions to `FIGHTING` and
    starts publishing ~20 Hz world snapshots. Movement is local and relayed;
    attacks are sent as discrete events and resolved server-side (distance vs
-   reach, facing, block). HP/death come back in snapshots.
+   reach, facing, block, **stamina cost**). HP, death, and stamina come back in
+   snapshots (stamina is server-authoritative but, like position, is kept off the
+   audit log).
 5. **Match over.** When a player's HP hits 0 the server transitions
    `FIGHTING → ROUND_OVER → MATCH_OVER` (default best-of-1) and publishes a final
    snapshot naming the winner; clients show the **VICTORY/DEFEAT** screen.

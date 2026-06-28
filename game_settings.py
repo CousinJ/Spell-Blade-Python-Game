@@ -1,7 +1,7 @@
 import os
 
 # Pure-data constants shared with the server (no pygame import here).
-from coordinator.action_data import MAX_HP, START_DIR, START_X
+from coordinator.action_data import MAX_HP, MAX_STAMINA, START_DIR, START_X
 
 WIDTH = 1200
 HEIGHT = 1000
@@ -21,5 +21,5 @@ INPUT_PUBLISH_HZ = 30
 
 __all__ = [
     "WIDTH", "HEIGHT", "PLAYER_W", "PLAYER_H", "PLAYER_Y", "PLAYER_COLORS",
-    "WS_URL", "INPUT_PUBLISH_HZ", "MAX_HP", "START_X", "START_DIR",
+    "WS_URL", "INPUT_PUBLISH_HZ", "MAX_HP", "MAX_STAMINA", "START_X", "START_DIR",
 ]

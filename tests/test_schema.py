@@ -22,7 +22,7 @@ from messaging.schema import (  # noqa: E402
 def test_round_trip_full():
     env = Envelope(
         type=MessageType.ATTACK,
-        payload={"action_id": "fire_strike"},
+        payload={"action_id": "strike_2"},
         match_id="m-123",
         actor="p1",
         client_seq=7,

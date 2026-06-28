@@ -1,0 +1,44 @@
+# Keep the build context small/fast. The Dockerfile only COPYs the three
+# server packages, so client modules can never end up in the image anyway.
+
+# Version control / IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Python caches / test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Large client-only assets (never needed by the server)
+assets/
+
+# Audit DBs and logs (created at runtime)
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Docs / planning / dev-only
+*.md
+plan.md
+sprints/
+tests/
+scripts/
+
+# Client-only / non-server modules (pull pygame or websocket-client)
+client.py
+anim.py
+hero.py
+player.py
+state.py
+actions.py
+game_settings.py
+network.py
+server.py
+requirements.txt

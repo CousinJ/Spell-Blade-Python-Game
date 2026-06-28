@@ -1,15 +1,14 @@
 
-import actions
+# Heroes share one standardized moveset now (see actions.py / arrow-key bindings
+# in player.py), so a hero only carries its display name and its sprite/effect
+# sheet paths -- no per-hero attack list.
 
 class MagicChar():
     def __init__(self):
         self.path_string = "./assets/sprite_sheets/magic-warrior-sheet.png"
         self.effect_path_string = "./assets/effect_sheets/magic-warrior-effect-sheet.png"
-        self.name = "Torin"
-        self.attack_one = actions.back_slash
-        self.attack_two = actions.ice_lance
-        self.attack_three = actions.quick_thrust
-        
+        self.name = "Magic Guy"
+
     def special_ability(self):
         print(' magic SPECIAL')
 
@@ -18,11 +17,8 @@ class FireChar():
     def __init__(self):
         self.path_string = "./assets/sprite_sheets/fire_warrior_sheet.png"
         self.effect_path_string = "./assets/effect_sheets/fire-warrior-effect-sheet.png"
-        self.name = "Dravin"
-        self.attack_one = actions.fire_slash
-        self.attack_two = actions.fire_strike
-        self.attack_three = actions.thrust
-        
+        self.name = "Fire Guy"
+
     def special_ability(self):
         print(' fire SPECIAL')
 
@@ -30,14 +26,11 @@ class ForestChar():
     def __init__(self):
         self.path_string = "./assets/sprite_sheets/forest-warrior-sheet.png"
         self.effect_path_string = "./assets/effect_sheets/forest-warrior-effect-sheet.png"
-        self.name = "Rast"
-        self.attack_one = actions.slash
-        self.attack_two = actions.back_slash
-        self.attack_three = actions.quick_thrust
-        
+        self.name = "Air Guy"
+
     def special_ability(self):
         print(' air SPECIAL')
-    
+
 
 
 
@@ -45,11 +38,8 @@ class IceChar():
     def __init__(self):
         self.path_string = "./assets/sprite_sheets/ice-warrior-sheet.png"
         self.effect_path_string = "./assets/effect_sheets/ice-warrior-effect-sheet.png"
-        self.name = "Tyros"
-        self.attack_one = actions.ice_lance
-        self.attack_two = actions.frost_sweep
-        self.attack_three = actions.overhead_strike
-        
+        self.name = "Ice Guy"
+
     def special_ability(self):
         print('ice SPECIAL')
 

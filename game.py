@@ -20,6 +20,21 @@ class TitleScreen():
         self.game.screen_image, self.game.screen_index = self.game.s_animator.animate.loop(self.game.title_screen, self.game.screen_image, self.game.screen_index )
 
 
+class WaitingScreen():
+    """Lobby / matchmaking wait: shown after a player presses SPACE to enter the
+    lobby and while they are queued (joined but not yet paired). Reuses the
+    loading-screen animation; screen transitions are driven by lifecycle events
+    in client.py, so there is nothing to do in update()."""
+    def __init__(self, game):
+        self.game = game
+
+    def update(self, p, p2, dt):
+        pass
+
+    def anim_update(self, p, p2):
+        self.game.screen_image, self.game.screen_index = self.game.s_animator.animate.loop(self.game.loading_screen, self.game.screen_image, self.game.screen_index )
+
+
 class PlayScreen():
     def __init__(self, game):
         self.game = game
@@ -145,6 +160,7 @@ class Game():
         self.play = PlayScreen(self)
         self.fight = FightScreen(self)
         self.over = OverScreen(self)
+        self.waiting = WaitingScreen(self)
         #this state
         self.state = self.title
         #anims
@@ -175,8 +191,32 @@ class Game():
         self.state.update(p, p2, dt)
         if self.state in (self.fight, self.over) and self.actor:
             self.draw_hud(win, p, p2)
-        if self.state is self.over:
+        if self.state is self.waiting:
+            self.draw_center_text(win, "WAITING FOR AN OPPONENT…", self.font, (240, 240, 240), dy=-20)
+        elif self.state is self.over:
             self.draw_over(win, p, p2)
+
+    def reset_for_new_game(self):
+        """Wipe per-game render state so a fresh match starts cleanly.
+
+        The animator cut/scale methods *append* into their frame lists, so each
+        game needs fresh animators; the persistent screen flags must reset too so
+        hero-select, asset-loading, and the fight intro all run again.
+        """
+        self.p1_animator = anim.PlayerAnimator()
+        self.p2_animator = anim.PlayerAnimator()
+        self.p1_image = None
+        self.p2_image = None
+        self.play.selected = False
+        self.loading.p_loaded = False
+        self.loading.p2_loaded = False
+        self.loading.reported = False
+        self.fight.started = False
+
+    def draw_center_text(self, win, text, font, color, dy=0):
+        surf = font.render(text, True, color)
+        rect = surf.get_rect(center=(game_settings.WIDTH // 2, game_settings.HEIGHT // 2 + dy))
+        win.blit(surf, rect)
 
     def switch_state(self, new_state):
         self.state = new_state
@@ -206,15 +246,24 @@ class Game():
 
     # ------------------------------------------------------------------ HUD
     def _left_right(self, p, p2):
-        """Return (p1_player, p2_player) regardless of which one is local."""
-        if self.actor == "p1":
-            return p, p2
-        return p2, p
+        """Return (p1_player, p2_player) regardless of which one is local.
+
+        Bound directly to each player's ``actor`` (set in client.py) rather than
+        to ``self.actor`` so the bars are deterministic and always track the
+        correct fighter: p1 spawns on the left, p2 on the right.
+        """
+        by_actor = {getattr(p, "actor", None): p, getattr(p2, "actor", None): p2}
+        left = by_actor.get("p1", p)
+        right = by_actor.get("p2", p2)
+        return left, right
 
     def draw_hud(self, win, p, p2):
         left, right = self._left_right(p, p2)
-        self._draw_health_bar(win, left, x=40, align_left=True)
-        self._draw_health_bar(win, right, x=game_settings.WIDTH - 40 - 420, align_left=False)
+        lx, rx = 40, game_settings.WIDTH - 40 - 420
+        self._draw_health_bar(win, left, x=lx, align_left=True)
+        self._draw_health_bar(win, right, x=rx, align_left=False)
+        self._draw_stamina_bar(win, left, x=lx, align_left=True)
+        self._draw_stamina_bar(win, right, x=rx, align_left=False)
 
     def _draw_health_bar(self, win, player, x, align_left):
         w, h, y = 420, 28, 40
@@ -229,7 +278,18 @@ class Game():
         if player.hero and player.hero.hero:
             name = player.hero.hero.name
         label = self.font.render(f"{name}  {player.hp}/{player.max_hp}", True, (255, 255, 255))
-        win.blit(label, (x, y + h + 4))
+        win.blit(label, (x, y + h + 34))  # below the stamina bar drawn under this
+
+    def _draw_stamina_bar(self, win, player, x, align_left):
+        w, h, y = 420, 14, 74  # thinner bar just under the health bar
+        max_stam = getattr(player, "max_stamina", 0)
+        stam = getattr(player, "stamina", 0)
+        frac = max(0.0, min(1.0, stam / max_stam)) if max_stam else 0.0
+        pygame.draw.rect(win, (40, 40, 40), (x, y, w, h))
+        fill_w = int(w * frac)
+        fill_x = x if align_left else x + (w - fill_w)
+        pygame.draw.rect(win, (230, 190, 40), (fill_x, y, fill_w, h))  # amber
+        pygame.draw.rect(win, (255, 255, 255), (x, y, w, h), 2)
 
     def draw_over(self, win, p, p2):
         overlay = pygame.Surface((game_settings.WIDTH, game_settings.HEIGHT), pygame.SRCALPHA)
@@ -252,6 +312,5 @@ class Game():
         rect = banner.get_rect(center=(game_settings.WIDTH // 2, game_settings.HEIGHT // 2 - 40))
         win.blit(banner, rect)
 
-        hint = self.font.render("Press ESC to quit", True, (230, 230, 230))
-        hrect = hint.get_rect(center=(game_settings.WIDTH // 2, game_settings.HEIGHT // 2 + 40))
-        win.blit(hint, hrect)
+        self.draw_center_text(win, "Press SPACE to return to the lobby", self.font, (230, 230, 230), dy=40)
+        self.draw_center_text(win, "Press ESC to quit", self.font, (180, 180, 180), dy=80)
