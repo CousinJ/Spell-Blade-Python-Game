@@ -1,0 +1,6 @@
+# Match Coordinator (headless server) dependencies.
+# This is the ONLY requirements file installed into the Docker image.
+# Must stay pygame-free / SDL-free.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+websockets>=12.0

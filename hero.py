@@ -57,9 +57,25 @@ class IceChar():
 
 class Hero():
     def __init__(self):
-        
+
         self.hero = False
     def select_hero(self, hero):
         self.hero = hero
     def special_ability(self):
         self.hero.special_ability()
+
+
+# Class-name string (as sent over the wire / stored in coordinator.action_data)
+# -> hero class, so a client can build the opponent's hero from a snapshot.
+HERO_CLASSES = {
+    "FireChar": FireChar,
+    "MagicChar": MagicChar,
+    "ForestChar": ForestChar,
+    "IceChar": IceChar,
+}
+
+
+def hero_from_name(name):
+    """Instantiate a hero class from its class-name string, or None."""
+    cls = HERO_CLASSES.get(name)
+    return cls() if cls else None

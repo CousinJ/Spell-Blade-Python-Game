@@ -184,6 +184,38 @@ class PlayerAnimator():
             p.frame_index += 1
             return image, p.frame_index
         
+    def animate_loop_anim(self, animation, image, p):
+        """Loop a single-row state animation (used for hurt).
+
+        Bounds-safe: falls back to the idle row if the sprite sheet has fewer
+        rows than the requested index, so missing art can never crash the game.
+        """
+        index = animation["index"]
+        if index >= len(self.anims):
+            index = 0
+        anim_frames = self.reflect_anims[index] if p.direction < 0 else self.anims[index]
+        frame_count = min(animation["frames"], len(anim_frames))
+        if p.frame_index >= frame_count:
+            p.frame_index = 0
+        image = anim_frames[p.frame_index]
+        p.frame_index += 1
+        return image, p.frame_index
+
+    def animate_hold_anim(self, animation, image, p):
+        """Play a single-row animation once then hold the last frame (death)."""
+        index = animation["index"]
+        if index >= len(self.anims):
+            index = 0
+        anim_frames = self.reflect_anims[index] if p.direction < 0 else self.anims[index]
+        frame_count = min(animation["frames"], len(anim_frames))
+        last = frame_count - 1
+        if p.frame_index >= last:
+            p.frame_index = last
+            return anim_frames[last], p.frame_index
+        image = anim_frames[p.frame_index]
+        p.frame_index += 1
+        return image, p.frame_index
+
     def animate_block(self, anim, image, p):
         anim_frames = self.e_anims[anim["index"]]
         if p.direction < 0:

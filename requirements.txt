@@ -1,0 +1,4 @@
+# Client (pygame game) dependencies.
+# The game client runs on the demo machines; it is NOT deployed to the server.
+pygame-ce>=2.5
+websocket-client>=1.7

@@ -12,6 +12,8 @@ class Loader():
             image = pygame.transform.scale(image, (game_settings.WIDTH, game_settings.HEIGHT))
             images.append(image)
         return images
+    
+    
     def load_static_screen(self, path):
         image = pygame.image.load(path)
         image = pygame.transform.scale(image, (game_settings.WIDTH, game_settings.HEIGHT))
