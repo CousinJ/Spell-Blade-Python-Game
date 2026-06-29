@@ -294,5 +294,5 @@ python -m pytest tests/ -q
 python scripts/m5_smoke.py        # → "M5 smoke PASS"
 ```
 
-See the [README](README.md) for controls, install, and environment variables;
-`plan.md` for the original design write-up and deployment notes.
+See the [README](README.md) for controls, install, environment variables, and
+deployment notes.

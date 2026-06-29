@@ -79,5 +79,5 @@ The single FastAPI service (`coordinator/app.py`) hosts both the WebSocket pub/s
 ## Reference docs
 
 - `README.md` — install / run / controls / startup sequence.
-- `plan.md` — the full EIP/GoF write-up, channel keys, message schema, and lifecycle state chart (the authoritative design doc; ~27 KB).
+- `DETAILS.md` — the full EIP/GoF write-up, channel keys, message schema, and lifecycle state chart (the authoritative design doc).
 - `requirements.md`, `sprints/` — original requirements and sprint notes.
